@@ -7,8 +7,8 @@ class wazuh::agent (
 
   $agent_package_version             = $wazuh::params_agent::agent_package_version,
   $agent_package_revision            = $wazuh::params_agent::agent_package_revision,
-  $agent_package_name                = $wazuh::params_agent::agent_package_name,
-  $agent_service_name                = $wazuh::params_agent::agent_service_name,
+  String $agent_package_name                = $wazuh::params_agent::agent_package_name,
+  String $agent_service_name                = $wazuh::params_agent::agent_service_name,
   $agent_service_ensure              = $wazuh::params_agent::agent_service_ensure,
   $agent_msi_download_location       = $wazuh::params_agent::agent_msi_download_location,
 
@@ -248,8 +248,6 @@ class wazuh::agent (
   # )
   # This allows arrays of integers, sadly
   # (commented due to stdlib version requirement)
-  validate_legacy(String, 'validate_string', $agent_package_name)
-  validate_legacy(String, 'validate_string', $agent_service_name)
 
   if (( $ossec_syscheck_whodata_directories_1 == 'yes' ) or ( $ossec_syscheck_whodata_directories_2 == 'yes' )) {
     class { 'wazuh::audit':
@@ -268,7 +266,7 @@ class wazuh::agent (
   }
 
   # Package installation
-  case $::kernel {
+  case $facts['kernel'] {
     'Linux': {
       package { $agent_package_name:
         ensure => "${agent_package_version}-${agent_package_revision}", # lint:ignore:security_package_pinned_version
@@ -302,44 +300,44 @@ class wazuh::agent (
     default: { fail('OS not supported') }
   }
 
-  case $::kernel {
-  'Linux': {
-    ## ossec.conf generation concats
-    case $::operatingsystem {
-      'RedHat', 'OracleLinux', 'Suse':{
-        $apply_template_os = 'rhel'
-        if ( $::operatingsystemrelease =~ /^9.*/ ){
-          $rhel_version = '9'
-        }elsif ( $::operatingsystemrelease =~ /^8.*/ ){
-          $rhel_version = '8'
-        }elsif ( $::operatingsystemrelease =~ /^7.*/ ){
-          $rhel_version = '7'
-        }elsif ( $::operatingsystemrelease =~ /^6.*/ ){
-          $rhel_version = '6'
-        }elsif ( $::operatingsystemrelease =~ /^5.*/ ){
-          $rhel_version = '5'
-        }else{
-          fail('This ossec module has not been tested on your distribution')
+  case $facts['kernel'] {
+    'Linux': {
+      ## ossec.conf generation concats
+      case $facts['os']['family'] {
+        'RedHat', 'OracleLinux', 'Suse':{
+          $apply_template_os = 'rhel'
+          if ( $facts['os']['release']['full'] =~ /^9.*/ ){
+            $rhel_version = '9'
+          }elsif ( $facts['os']['release']['full'] =~ /^8.*/ ){
+            $rhel_version = '8'
+          }elsif ( $facts['os']['release']['full'] =~ /^7.*/ ){
+            $rhel_version = '7'
+          }elsif ( $facts['os']['release']['full'] =~ /^6.*/ ){
+            $rhel_version = '6'
+          }elsif ( $facts['os']['release']['full'] =~ /^5.*/ ){
+            $rhel_version = '5'
+          }else{
+            fail('This ossec module has not been tested on your distribution')
+          }
+        }'Debian', 'debian', 'Ubuntu', 'ubuntu':{
+          $apply_template_os = 'debian'
+          if ( $facts['os']['distro']['codename'] == 'wheezy') or ($facts['os']['distro']['codename'] == 'jessie'){
+            $debian_additional_templates = 'yes'
+          }
+        }'Amazon':{
+          $apply_template_os = 'amazon'
+        }'CentOS','Centos','centos','AlmaLinux','Rocky':{
+          $apply_template_os = 'centos'
+        }'SLES':{
+          $apply_template_os = 'suse'
         }
-      }'Debian', 'debian', 'Ubuntu', 'ubuntu':{
-        $apply_template_os = 'debian'
-        if ( $::lsbdistcodename == 'wheezy') or ($::lsbdistcodename == 'jessie'){
-          $debian_additional_templates = 'yes'
-        }
-      }'Amazon':{
-        $apply_template_os = 'amazon'
-      }'CentOS','Centos','centos','AlmaLinux','Rocky':{
-        $apply_template_os = 'centos'
-      }'SLES':{
-        $apply_template_os = 'suse'
+        default: { fail('OS not supported') }
+      }
+    }'windows': {
+        $apply_template_os = 'windows'
       }
       default: { fail('OS not supported') }
     }
-  }'windows': {
-      $apply_template_os = 'windows'
-    }
-    default: { fail('OS not supported') }
-  }
 
 
   concat { 'agent_ossec.conf':
