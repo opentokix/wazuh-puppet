@@ -462,7 +462,7 @@ class wazuh::params_agent {
               }
             }
             'Rocky': {
-              if ( $['os']['release']['full'] =~ /^8.*/ ) {
+              if ( $facts['os']['release']['full'] =~ /^8.*/ ) {
                 $ossec_service_provider = 'redhat'
               }
             }
